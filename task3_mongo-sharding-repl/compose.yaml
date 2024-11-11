@@ -1,0 +1,190 @@
+services:
+  configSrv_repl:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: configSrv_repl
+    restart: always
+    volumes:
+      - config-data:/data/db
+    command:
+      [
+        "--configsvr", 
+        "--replSet",
+        "config_server",
+        "--bind_ip_all",
+        "--port",
+        "27017"
+      ] 
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+
+  shard1_1:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard1_1
+    restart: always
+    volumes:
+      - shard1-1-data:/data/db
+    command:
+      [
+        "--shardsvr", 
+        "--replSet",
+        "shard1",
+        "--bind_ip_all",
+        "--port",
+        "27018"
+      ]
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+      
+  shard1_2:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard1_2
+    restart: always
+    volumes:
+      - shard1-2-data:/data/db
+    command:
+      [
+        "--shardsvr", 
+        "--replSet",
+        "shard1",
+        "--bind_ip_all",
+        "--port",
+        "27018"
+      ]
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+    
+  shard1_3:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard1_3
+    restart: always
+    volumes:
+      - shard1-3-data:/data/db
+    command:
+      [
+        "--shardsvr", 
+        "--replSet",
+        "shard1",
+        "--bind_ip_all",
+        "--port",
+        "27018"
+      ]
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+      
+
+  shard2_1:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard2_1
+    restart: always
+    volumes:
+      - shard2-1-data:/data/db
+    command:
+      [
+        "--shardsvr",
+        "--replSet",
+        "shard2",
+        "--bind_ip_all",
+        "--port",
+        "27019"
+      ]
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+
+  shard2_2:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard2_2
+    restart: always
+    volumes:
+      - shard2-2-data:/data/db
+    command:
+      [
+        "--shardsvr",
+        "--replSet",
+        "shard2",
+        "--bind_ip_all",
+        "--port",
+        "27019"
+      ]
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+
+  shard2_3:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard2_3
+    restart: always
+    volumes:
+      - shard2-3-data:/data/db
+    command:
+      [
+        "--shardsvr",
+        "--replSet",
+        "shard2",
+        "--bind_ip_all",
+        "--port",
+        "27019"
+      ]
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+  
+  mongos_router_repl:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: mongos_router_repl
+    restart: always
+    depends_on:
+      - configSrv_repl
+      - shard1_1
+      - shard1_2
+      - shard1_3
+      - shard2_1
+      - shard2_2
+      - shard2_3
+    ports:
+      - "27017:27017"
+    command:
+      [
+        "mongos",
+        "--configdb", 
+        "config_server/configSrv_repl:27017",
+        "--bind_ip_all",
+      ]
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+
+  mongo_sharding_repl_pymongo_api:
+    container_name: mongo_sharding_repl_pymongo_api
+    build: 
+      context: api_app
+      dockerfile: Dockerfile
+    image: kazhem/pymongo_api:1.0.0
+    depends_on:
+      - mongos_router_repl
+    ports:
+      - 8080:8080
+    environment:
+      MONGODB_URL: "mongodb://mongos_router_repl"
+      MONGODB_DATABASE_NAME: "somedb"
+
+volumes:
+  config-data:
+  shard1-1-data:
+  shard1-2-data:
+  shard1-3-data:
+  shard2-1-data:
+  shard2-2-data:
+  shard2-3-data:

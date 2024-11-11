@@ -1,0 +1,200 @@
+services:
+  configSrv_sharding_repl_cache:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: configSrv_sharding_repl_cache
+    restart: always
+    volumes:
+      - config-data:/data/db
+    command:
+      [
+        "--configsvr", 
+        "--replSet",
+        "config_server",
+        "--bind_ip_all",
+        "--port",
+        "27017"
+      ] 
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+
+  shard1_1_sharding_repl_cache:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard1_1_sharding_repl_cache
+    restart: always
+    volumes:
+      - shard1-1-data:/data/db
+    command:
+      [
+        "--shardsvr", 
+        "--replSet",
+        "shard1",
+        "--bind_ip_all",
+        "--port",
+        "27018"
+      ]
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+      
+  shard1_2_sharding_repl_cache:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard1_2_sharding_repl_cache
+    restart: always
+    volumes:
+      - shard1-2-data:/data/db
+    command:
+      [
+        "--shardsvr", 
+        "--replSet",
+        "shard1",
+        "--bind_ip_all",
+        "--port",
+        "27018"
+      ]
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+    
+  shard1_3_sharding_repl_cache:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard1_3_sharding_repl_cache
+    restart: always
+    volumes:
+      - shard1-3-data:/data/db
+    command:
+      [
+        "--shardsvr", 
+        "--replSet",
+        "shard1",
+        "--bind_ip_all",
+        "--port",
+        "27018"
+      ]
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+      
+
+  shard2_1_sharding_repl_cache:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard2_1_sharding_repl_cache
+    restart: always
+    volumes:
+      - shard2-1-data:/data/db
+    command:
+      [
+        "--shardsvr",
+        "--replSet",
+        "shard2",
+        "--bind_ip_all",
+        "--port",
+        "27019"
+      ]
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+
+  shard2_2_sharding_repl_cache:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard2_2_sharding_repl_cache
+    restart: always
+    volumes:
+      - shard2-2-data:/data/db
+    command:
+      [
+        "--shardsvr",
+        "--replSet",
+        "shard2",
+        "--bind_ip_all",
+        "--port",
+        "27019"
+      ]
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+
+  shard2_3_sharding_repl_cache:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard2_3_sharding_repl_cache
+    restart: always
+    volumes:
+      - shard2-3-data:/data/db
+    command:
+      [
+        "--shardsvr",
+        "--replSet",
+        "shard2",
+        "--bind_ip_all",
+        "--port",
+        "27019"
+      ]
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+  
+  mongos_router_sharding_repl_cache:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: mongos_router_sharding_repl_cache
+    restart: always
+    depends_on:
+      - configSrv_sharding_repl_cache
+      - shard1_1_sharding_repl_cache
+      - shard1_2_sharding_repl_cache
+      - shard1_3_sharding_repl_cache
+      - shard2_1_sharding_repl_cache
+      - shard2_2_sharding_repl_cache
+      - shard2_3_sharding_repl_cache
+    ports:
+      - "27017:27017"
+    command:
+      [
+        "mongos",
+        "--configdb", 
+        "config_server/configSrv_sharding_repl_cache:27017",
+        "--bind_ip_all",
+      ]
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 5s
+      start_period: 10s
+
+  sharding_repl_cache_pymongo_api:
+    container_name: sharding_repl_cache_pymongo_api
+    build: 
+      context: api_app
+      dockerfile: Dockerfile
+    image: kazhem/pymongo_api:1.0.0
+    depends_on:
+      - mongos_router_sharding_repl_cache
+    ports:
+      - 8080:8080
+    environment:
+      MONGODB_URL: "mongodb://mongos_router_sharding_repl_cache"
+      MONGODB_DATABASE_NAME: "somedb"
+      REDIS_URL: "redis://redis_container:6379" 
+
+  redis_container:
+    image: dh-mirror.gitverse.ru/redis:7.2.4-alpine
+    container_name: redis_container
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  config-data:
+  shard1-1-data:
+  shard1-2-data:
+  shard1-3-data:
+  shard2-1-data:
+  shard2-2-data:
+  shard2-3-data:
